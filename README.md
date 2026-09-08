@@ -18,6 +18,21 @@ backend/            Python FastAPI application
 
 The frontend currently displays a placeholder page. The backend exposes only `GET /health`, returning `{"status":"ok"}`. Automatic API documentation and OpenAPI routes are disabled. There is no database, authentication, payment integration, or restaurant business logic yet.
 
+## Local environment files
+
+From the repository root, copy the templates to create local environment files:
+
+```bash
+cp frontend/.env.example frontend/.env.local
+cp backend/.env.example backend/.env
+```
+
+The frontend template sets `NEXT_PUBLIC_API_URL=http://localhost:8000`, and the backend template sets `FRONTEND_URL=http://localhost:3000`.
+
+These values prepare configuration for future frontend/backend integration; neither application currently uses them. The backend does not currently load `.env` files automatically.
+
+Real `.env` files and their local variants are ignored by Git. The `.env.example` templates are version-controlled and must contain only safe placeholder values, never secrets or credentials. Variables prefixed with `NEXT_PUBLIC_` are public frontend configuration and must never contain secrets.
+
 ## Run the frontend
 
 Prerequisite: Node.js 24 LTS (with npm).
@@ -66,4 +81,4 @@ curl http://127.0.0.1:8000/health
 
 Expected response: `{"status":"ok"}`.
 
-Neither application requires environment variables for this initial setup. Local `.env` files and virtual environments are ignored by Git.
+Neither application requires environment variables for this initial setup. Virtual environments are also ignored by Git.
