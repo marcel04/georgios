@@ -1,7 +1,13 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.core.config import settings
+
+
+class Base(DeclarativeBase):
+    # Future ORM models inherit this class to share metadata with Alembic.
+    pass
+
 
 # Share one engine and connection pool; connections open when first needed.
 engine = create_engine(settings.database_url)
