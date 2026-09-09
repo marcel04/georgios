@@ -4,6 +4,8 @@ An online-ordering platform for a restaurant, starting with a minimal applicatio
 
 Unofficial portfolio project. This project is not affiliated with or endorsed by Georgio's Roast Beef & Pizza.
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the Jira, branch, pull request, review, and merge workflow.
+
 ## Architecture
 
 This monorepo contains two separate applications, each with its own dependencies and development server:
