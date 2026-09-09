@@ -39,8 +39,8 @@ Examples:
 | `description`   | TEXT      | NULLABLE               | Optional category description                |
 | `display_order` | INTEGER   | NOT NULL               | Controls category display order              |
 | `is_active`     | BOOLEAN   | NOT NULL, DEFAULT TRUE | Determines whether the category is displayed |
-| `created_at`    | TIMESTAMP | NOT NULL               | Creation timestamp                           |
-| `updated_at`    | TIMESTAMP | NOT NULL               | Last update timestamp                        |
+| `created_at`    | TIMESTAMPTZ | NOT NULL               | Creation timestamp                           |
+| `updated_at`    | TIMESTAMPTZ | NOT NULL               | Last update timestamp                        |
 
 ---
 
@@ -68,12 +68,12 @@ Prices are not stored directly on menu items because many items have multiple si
 | `image_url`     | VARCHAR   | NULLABLE               | Optional item image URL                    |
 | `is_available`  | BOOLEAN   | NOT NULL, DEFAULT TRUE | Determines whether the item can be ordered |
 | `display_order` | INTEGER   | NOT NULL               | Controls display order within the category |
-| `created_at`    | TIMESTAMP | NOT NULL               | Creation timestamp                         |
-| `updated_at`    | TIMESTAMP | NOT NULL               | Last update timestamp                      |
+| `created_at`    | TIMESTAMPTZ | NOT NULL               | Creation timestamp                         |
+| `updated_at`    | TIMESTAMPTZ | NOT NULL               | Last update timestamp                      |
 
 ### Relationship
 
-`menu_items.category_id` references `menu_categories.id`.
+`menu_items.category_id` references `menu_categories.id` with `ON DELETE CASCADE`.
 
 ---
 
@@ -99,17 +99,43 @@ Each variant has its own price.
 | `id`            | INTEGER        | PRIMARY KEY            | Unique variant identifier                     |
 | `menu_item_id`  | INTEGER        | NOT NULL, FOREIGN KEY  | Menu item the variant belongs to              |
 | `name`          | VARCHAR        | NOT NULL               | Variant name                                  |
-| `price`         | NUMERIC(10, 2) | NOT NULL               | Price of the variant                          |
+| `price`         | NUMERIC(10, 2) | NOT NULL, CHECK (price > 0) | Regular price of the variant                  |
 | `display_order` | INTEGER        | NOT NULL               | Controls variant display order                |
 | `is_available`  | BOOLEAN        | NOT NULL, DEFAULT TRUE | Determines whether the variant can be ordered |
-| `created_at`    | TIMESTAMP      | NOT NULL               | Creation timestamp                            |
-| `updated_at`    | TIMESTAMP      | NOT NULL               | Last update timestamp                         |
+| `created_at`    | TIMESTAMPTZ      | NOT NULL               | Creation timestamp                            |
+| `updated_at`    | TIMESTAMPTZ      | NOT NULL               | Last update timestamp                         |
 
 ### Relationship
 
-`menu_item_variants.menu_item_id` references `menu_items.id`.
+`menu_item_variants.menu_item_id` references `menu_items.id` with `ON DELETE CASCADE`.
+
+### Variant constraints
+
+Variant names must be unique within their parent item. The planned table-level constraint is:
+
+```sql
+UNIQUE (menu_item_id, name)
+```
+
+For example, Cheese Pizza cannot have two variants named `Large`, but Cheese Pizza and Italian Sub can each have a `Large` variant. Case and whitespace normalization rules remain to be defined.
+
+Every menu item must have at least one variant, including unavailable items. An item with a single price still requires a variant such as `Regular`.
+
+When implemented, item creation must create the item and its initial variant together in one transaction. Deleting or moving the last variant must be rejected if it would leave the original item without a variant. An unavailable variant still counts toward this minimum.
+
+The foreign key alone does not enforce this minimum child count. Database-level enforcement must validate the rule at transaction commit so an item and its first variant can be inserted together. This rule applies only to items that still exist at commit and must allow variants to be deleted when their parent item is deleted. The specific enforcement mechanism remains to be designed; these constraints are proposed, not implemented.
 
 ---
+
+## Deletion rules
+
+The planned foreign keys use `ON DELETE CASCADE`:
+
+* Deleting a category deletes all its menu items and, through those items, all their variants.
+* Deleting an item deletes all its variants.
+* Deleting a variant does not delete its parent item. It must not leave an existing item without a variant.
+
+These are permanent deletions. For temporary unavailability, use the availability flags instead. Cascading deletion is proposed here; it has not yet been implemented in the database.
 
 ## Relationships
 
@@ -171,6 +197,14 @@ NUMERIC(10, 2)
 
 Floating-point types should not be used for monetary values because they can introduce rounding errors.
 
+Variant prices represent regular menu prices and must be strictly positive. The planned database constraint is:
+
+```sql
+CHECK (price > 0)
+```
+
+Zero and negative regular prices are not allowed. Future coupons and buy-one-get-one offers will apply discounts separately from stored menu prices and may reduce the amount charged to zero. Discount modeling is outside this initial menu schema and has not been implemented.
+
 ---
 
 ## Availability
@@ -189,9 +223,39 @@ This allows Georgio's to temporarily hide an item or size while preserving its d
 
 ---
 
+## Timestamps
+
+All three tables will use PostgreSQL `TIMESTAMPTZ` for `created_at` and `updated_at`. Timestamps will be managed by the database:
+
+* On insert, both fields default to `CURRENT_TIMESTAMP`.
+* `created_at` records creation time and must remain unchanged on later updates.
+* A database update trigger will automatically refresh `updated_at` when the row is updated. Application code will not need to supply these timestamps.
+
+Timezone-aware values represent an unambiguous instant; display formatting can use the restaurant's local timezone. These fields record creation and last-update times, not a history of changes or who made them.
+
+Updates refresh only the changed row's `updated_at`; they do not propagate to parent records. For example, changing a variant's price updates that variant's timestamp but leaves its menu item's and category's timestamps unchanged. Changing the item's description updates only the item's timestamp.
+
+Defaults and triggers are planned here and have not yet been implemented.
+
+---
+
 ## Display Ordering
 
 Categories, items, and variants use `display_order` fields so the menu can be displayed in a specific order without relying on database IDs or creation time.
+
+Display positions must be unique within the list being ordered. The planned database constraints are:
+
+| Table | Unique constraint | Scope |
+| --- | --- | --- |
+| `menu_categories` | `UNIQUE (display_order)` | All categories |
+| `menu_items` | `UNIQUE (category_id, display_order)` | Items within the same category |
+| `menu_item_variants` | `UNIQUE (menu_item_id, display_order)` | Variants within the same item |
+
+For example, Cheese Pizza and Italian Sub can both have position `1` if they belong to different categories. Two items in the same category cannot share position `1`. Unavailable records still reserve their positions.
+
+Queries must explicitly sort by `display_order` in ascending order; uniqueness does not automatically sort query results. Positions do not need to be consecutive.
+
+Reordering must preserve these constraints. Swapping occupied positions requires either temporary unused positions or deferring the unique constraints within a transaction; the implementation approach remains to be chosen. These constraints are proposed here and have not yet been implemented in the database.
 
 ---
 
@@ -264,8 +328,8 @@ erDiagram
         text description
         int display_order
         boolean is_active
-        timestamp created_at
-        timestamp updated_at
+        timestamptz created_at
+        timestamptz updated_at
     }
 
     MENU_ITEMS {
@@ -276,8 +340,8 @@ erDiagram
         varchar image_url
         boolean is_available
         int display_order
-        timestamp created_at
-        timestamp updated_at
+        timestamptz created_at
+        timestamptz updated_at
     }
 
     MENU_ITEM_VARIANTS {
@@ -287,8 +351,8 @@ erDiagram
         numeric price
         int display_order
         boolean is_available
-        timestamp created_at
-        timestamp updated_at
+        timestamptz created_at
+        timestamptz updated_at
     }
 ```
 
