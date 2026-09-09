@@ -103,3 +103,7 @@ uv run pytest
 `pyproject.toml` declares FastAPI and Uvicorn as runtime dependencies. Its `dev` dependency group includes the FastAPI CLI, Ruff, pytest, and HTTPX for FastAPI's test client. Ruff checks lint rules and formatting using the same file. To apply formatting fixes, run `uv run ruff format .`.
 
 The pytest health test checks that `GET /health` returns HTTP 200 and `{"status":"ok"}`. It runs in-process and does not require a running backend server.
+
+## Continuous integration
+
+The GitHub Actions workflow in `.github/workflows/ci.yml` runs automatically on pull requests targeting `main` and pushes to `main`. Separate jobs run frontend lint, type checking, and the production build with Node.js 24, and backend Ruff lint, formatting checks, and pytest with Python 3.12 and uv. Dependencies are installed using `npm ci` and `uv sync --locked`; backend commands enforce the existing lockfile. No secrets or deployment setup are required.
