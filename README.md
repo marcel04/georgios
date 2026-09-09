@@ -19,7 +19,7 @@ backend/            Python FastAPI application
   uv.lock           Locked backend dependency versions
 ```
 
-The frontend currently displays a placeholder page. The backend exposes only `GET /health`, returning `{"status":"ok"}`. Automatic API documentation and OpenAPI routes are disabled. There is no database, authentication, payment integration, or restaurant business logic yet.
+The frontend currently displays a placeholder page. The backend exposes only `GET /health`, returning `{"status":"ok"}`. Automatic API documentation and OpenAPI routes are disabled. Local PostgreSQL is configured through Docker Compose; backend database integration, authentication, payment integration, and restaurant business logic are not implemented yet.
 
 ## Local environment files
 
@@ -105,6 +105,69 @@ uv run pytest
 `pyproject.toml` declares FastAPI and Uvicorn as runtime dependencies. Its `dev` dependency group includes the FastAPI CLI, Ruff, pytest, and HTTPX for FastAPI's test client. Ruff checks lint rules and formatting using the same file. To apply formatting fixes, run `uv run ruff format .`.
 
 The pytest health test checks that `GET /health` returns HTTP 200 and `{"status":"ok"}`. It runs in-process and does not require a running backend server.
+
+## Local PostgreSQL Development
+
+Prerequisite: Docker with Docker Compose installed and the Docker engine running. Run the following shell commands from the repository root, where `compose.yaml` lives.
+
+The root `.env` contains local PostgreSQL configuration. Create it from the committed `.env.example` template if it does not already exist:
+
+```bash
+cp .env.example .env
+```
+
+Set these local development values in `.env` (the template uses `change-me` as its password placeholder):
+
+```dotenv
+POSTGRES_DB=georgios
+POSTGRES_USER=georgios
+POSTGRES_PASSWORD=georgios
+```
+
+Do not commit `.env`; it is ignored by Git. `.env.example` is the committed template. These example credentials are for local development only.
+
+### Start, stop, and inspect
+
+| Action | Command | Effect |
+| --- | --- | --- |
+| Start the database | `docker compose up -d` | Creates and starts PostgreSQL in the background. |
+| Check status | `docker compose ps` | Shows container status and health. |
+| Stop the database | `docker compose stop` | Stops containers while keeping them and their data. |
+| Start a stopped database | `docker compose start` | Starts previously created, stopped containers. |
+| Stop and remove containers | `docker compose down` | Removes containers and the Compose network, retaining the data volume. |
+| View PostgreSQL logs | `docker compose logs postgres` | Prints available logs. |
+| Follow logs | `docker compose logs -f postgres` | Streams logs; Ctrl+C exits log following. |
+| Restart PostgreSQL | `docker compose restart postgres` | Restarts the existing service. |
+| Re-apply Compose configuration | `docker compose up -d` | Recreates containers when needed to apply configuration changes. |
+
+PostgreSQL data is stored in the named `postgres_data` volume. Restarting alone does not apply Compose configuration changes. Initialization settings in `.env` apply when the database is first created; changing them does not update users or passwords in an existing data volume.
+
+### Connect to PostgreSQL
+
+```bash
+docker compose exec postgres psql -U georgios -d georgios
+```
+
+Inside psql, verify the current database:
+
+```sql
+SELECT current_database();
+```
+
+The expected database name is `georgios`. Exit psql with:
+
+```text
+\q
+```
+
+### Fully reset the local database
+
+**Warning: `docker compose down -v` deletes the local PostgreSQL data volume and all database data stored in it.** Use this only when you intend to start with an empty local database.
+
+```bash
+docker compose down -v
+docker compose up -d
+```
 
 ## Continuous integration
 
