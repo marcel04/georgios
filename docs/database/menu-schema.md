@@ -279,39 +279,70 @@ Cheese Pizza
 
 ---
 
-## Future Modifier Support
+## Modifier Support (GEO-20)
 
-Variants represent purchasable versions of an item.
+Modifier groups belong to a specific menu item, not a global reusable catalog. Variants represent the purchasable size; modifiers customize that purchase. For example, Cheese Pizza's Toppings group contains Pepperoni, with adjustments of 1.30 for Small/Large and 1.50 for X-Large.
 
-Modifiers represent customizations to an item.
+### `modifier_groups`
 
-Examples include:
+| Column | Type | Constraints / meaning |
+| --- | --- | --- |
+| `id` | INTEGER | Primary key |
+| `menu_item_id` | INTEGER | NOT NULL; FK to menu_items.id, ON DELETE CASCADE |
+| `name` | VARCHAR | NOT NULL; unique within item |
+| `min_selections` | INTEGER | NOT NULL; >= 0 |
+| `max_selections` | INTEGER | NOT NULL; >= 0 and >= min_selections |
+| `display_order` | INTEGER | NOT NULL; unique within item |
+| `is_active` | BOOLEAN | NOT NULL; server default true |
+| `created_at` | TIMESTAMPTZ | NOT NULL; server default now() |
+| `updated_at` | TIMESTAMPTZ | NOT NULL; server default now(); database update trigger |
 
-* Pizza toppings
-* Extra cheese
-* Dressing choices
-* Add-ons
-* Optional ingredients
+### `modifier_options`
 
-Conceptually:
+| Column | Type | Constraints / meaning |
+| --- | --- | --- |
+| `id` | INTEGER | Primary key |
+| `modifier_group_id` | INTEGER | NOT NULL; part of composite group FK |
+| `menu_item_id` | INTEGER | NOT NULL; ownership matches group |
+| `name` | VARCHAR | NOT NULL; unique within group |
+| `display_order` | INTEGER | NOT NULL; unique within group |
+| `is_available` | BOOLEAN | NOT NULL; server default true |
+| `created_at` | TIMESTAMPTZ | NOT NULL; server default now() |
+| `updated_at` | TIMESTAMPTZ | NOT NULL; server default now(); database update trigger |
 
-```text
-Menu Item
-|
-+-- Variants
-|   |
-|   +-- Small
-|   +-- Large
-|   +-- X-Large
-|
-+-- Modifier Groups
-    |
-    +-- Modifier Options
-```
+### `modifier_option_prices`
 
-Modifier-related tables will be designed and implemented as part of GEO-20.
+| Column | Type | Constraints / meaning |
+| --- | --- | --- |
+| `id` | INTEGER | Primary key |
+| `modifier_option_id` | INTEGER | NOT NULL; part of composite option FK |
+| `menu_item_variant_id` | INTEGER | NOT NULL; part of composite variant FK |
+| `menu_item_id` | INTEGER | NOT NULL; shared ownership key |
+| `price_adjustment` | NUMERIC(10, 2) | NOT NULL; CHECK (price_adjustment >= 0); Python Decimal |
 
-Some modifier prices may depend on the selected item variant. That behavior will be addressed when the modifier schema is designed.
+The (modifier_option_id, menu_item_variant_id) pair is unique. Zero represents a free choice; negative adjustments are rejected. The pricing table has no timestamps in this ticket. No default price adjustment or selection limits are assumed; callers must supply them. Selection bounds describe allowed counts; validating customer selections is future ordering work. A missing price row is not automatically a free choice.
+
+### Same-item ownership enforced by PostgreSQL
+
+`menu_item_id` is deliberately duplicated in options and prices to make item ownership part of each foreign key. All three composite foreign keys use ON DELETE CASCADE:
+
+| Child key | Referenced key |
+| --- | --- |
+| modifier_options(modifier_group_id, menu_item_id) | modifier_groups(id, menu_item_id) |
+| modifier_option_prices(modifier_option_id, menu_item_id) | modifier_options(id, menu_item_id) |
+| modifier_option_prices(menu_item_variant_id, menu_item_id) | menu_item_variants(id, menu_item_id) |
+
+Each referenced (id, menu_item_id) pair has a composite UNIQUE constraint. One price row must satisfy both the option and variant ownership keys, so Pepperoni belonging to Cheese Pizza cannot be priced against an Italian Sub variant, even through direct SQL. Ownership changes that invalidate existing references are rejected; no ON UPDATE CASCADE is configured.
+
+The ORM option relationship supplies the price row's ownership value. The variant relationship joins on both columns but writes only the variant ID, avoiding competing writes to menu_item_id. Database constraints remain the authority for ownership; this is not application-only validation.
+
+Deleting an item cascades through its groups/options/prices and its variants. Deleting a group deletes its options/prices; deleting an option or variant deletes the affected prices. Disabling availability does not delete records or release unique names/display positions. Order lists explicitly by display_order; uniqueness is scoped to the parent list.
+
+### Migration
+
+Revision `9e4f00aee08d` follows `361f81bb87ba`. It adds the variant composite key before the new pricing foreign key, creates the modifier tables, and adds update triggers for groups/options using the existing set_updated_at() function. Updates change only the affected row's timestamp. Downgrade removes modifier triggers, child tables, and finally the variant composite key; it preserves the function used by existing menu tables.
+
+The migration was applied and checked locally for GEO-20. PostgreSQL integration checks can be rerun from backend/ with `GEO20_DB_TESTS=1 uv run pytest tests/test_modifiers.py`; they require the migrated development database and roll back their test rows. The initial minimum-one-variant-per-item requirement remains outside this modifier implementation.
 
 ---
 
@@ -321,6 +352,10 @@ Some modifier prices may depend on the selected item variant. That behavior will
 erDiagram
     MENU_CATEGORIES ||--o{ MENU_ITEMS : contains
     MENU_ITEMS ||--|{ MENU_ITEM_VARIANTS : has
+    MENU_ITEMS ||--o{ MODIFIER_GROUPS : offers
+    MODIFIER_GROUPS ||--o{ MODIFIER_OPTIONS : contains
+    MODIFIER_OPTIONS ||--o{ MODIFIER_OPTION_PRICES : prices
+    MENU_ITEM_VARIANTS ||--o{ MODIFIER_OPTION_PRICES : selects
 
     MENU_CATEGORIES {
         int id PK
@@ -358,7 +393,7 @@ erDiagram
 
 ## Current Schema Summary
 
-The initial menu system contains three core tables:
+The menu system contains three core tables plus three modifier tables:
 
 ```text
 menu_categories
@@ -366,6 +401,9 @@ menu_categories
     +-- menu_items
             |
             +-- menu_item_variants
+            +-- modifier_groups
+                    +-- modifier_options
+                            +-- modifier_option_prices (also references a variant)
 ```
 
-Modifier-related tables will be added in GEO-20.
+GEO-20 adds modifier_groups, modifier_options, and modifier_option_prices, with composite foreign keys enforcing the same menu item throughout the modifier pricing path.
