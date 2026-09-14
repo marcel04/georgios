@@ -1,7 +1,12 @@
 from fastapi import FastAPI
 
+from app.routers.menu import router as menu_router
+
 # Uvicorn serves this application; automatic API documentation is disabled.
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+
+# Register the menu endpoints on the application served by Uvicorn.
+app.include_router(menu_router)
 
 
 @app.get("/health")
