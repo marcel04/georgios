@@ -29,7 +29,9 @@ def get_menu_categories(db: Session = Depends(get_db)) -> list[MenuCategory]:
 
 
 @router.get("/categories/{category_id}/items", response_model=list[MenuItemResponse])
-def get_menu_items_by_category(category_id: int, db: Session = Depends(get_db)) -> list[MenuItem]:
+def get_menu_items_by_category(
+    category_id: int, db: Session = Depends(get_db)
+) -> list[MenuItem]:
     category = db.get(MenuCategory, category_id)
 
     if category is None or not category.is_active:
@@ -52,13 +54,8 @@ def get_menu_items_by_category(category_id: int, db: Session = Depends(get_db)) 
 
     for item in items:
         item.variants = sorted(
-            [
-                variant
-                for variant in item.variants
-                if variant.is_available
-            ],
+            [variant for variant in item.variants if variant.is_available],
             key=lambda variant: variant.display_order,
         )
 
     return items
-

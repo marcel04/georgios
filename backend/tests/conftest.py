@@ -4,7 +4,7 @@ import os
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
@@ -17,10 +17,8 @@ if os.environ.get("GEO20_DB_TESTS") != "1":
 
 
 @pytest.fixture
-def menu_api():
-    """Create a fresh database and dependency override for each test case."""
-    from app.database import get_db
-    from app.main import app
+def menu_engine():
+    """Create an isolated database with real foreign-key cascade enforcement."""
     from app.models import MenuCategory, MenuItem, MenuItemVariant
 
     engine = create_engine(
@@ -30,9 +28,30 @@ def menu_api():
         # Share one connection so both threads see the same in-memory database.
         poolclass=StaticPool,
     )
+
+    @event.listens_for(engine, "connect")
+    def enable_foreign_keys(connection, _):
+        cursor = connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     # API contract tests need the core menu tables, not PostgreSQL triggers.
     for model in (MenuCategory, MenuItem, MenuItemVariant):
         model.__table__.create(engine)
+
+    try:
+        yield engine
+    finally:
+        engine.dispose()
+
+
+@pytest.fixture
+def menu_api(menu_engine):
+    """Exercise the real API with the isolated menu database."""
+    from app.database import get_db
+    from app.main import app
+
+    engine = menu_engine
 
     def override_db():
         # Each request gets its own session, closed by the context manager.
@@ -49,4 +68,3 @@ def menu_api():
         # Restore global app state even after a failing assertion.
         app.dependency_overrides.clear()
         app.dependency_overrides.update(previous_overrides)
-        engine.dispose()
