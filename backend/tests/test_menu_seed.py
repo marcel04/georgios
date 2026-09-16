@@ -22,7 +22,7 @@ def test_seed_creates_expected_totals(menu_engine):
 
     # A new session verifies that seed_menu persisted its work.
     with Session(menu_engine) as db:
-        assert menu_counts(db) == (21, 292, 515)
+        assert menu_counts(db) == (22, 321, 563)
 
 
 def test_seed_creates_cheese_pizza_with_ordered_exact_prices(menu_engine):
@@ -52,11 +52,11 @@ def test_seed_creates_cheese_pizza_with_ordered_exact_prices(menu_engine):
 def test_seed_twice_preserves_totals(menu_engine):
     with Session(menu_engine) as db:
         seed_menu(db)
-        assert menu_counts(db) == (21, 292, 515)
+        assert menu_counts(db) == (22, 321, 563)
         seed_menu(db)
 
     with Session(menu_engine) as db:
-        assert menu_counts(db) == (21, 292, 515)
+        assert menu_counts(db) == (22, 321, 563)
 
 
 def test_seed_preserves_representative_category_and_item_display_order(menu_engine):
@@ -113,7 +113,7 @@ def test_seed_replaces_existing_menu_and_cascades_children(menu_engine):
         seed_menu(db)
 
     with Session(menu_engine) as db:
-        assert menu_counts(db) == (21, 292, 515)
+        assert menu_counts(db) == (22, 321, 563)
         for model, name in (
             (MenuCategory, "Obsolete category"),
             (MenuItem, "Obsolete item"),

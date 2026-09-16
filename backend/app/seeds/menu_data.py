@@ -15,9 +15,8 @@ Conventions:
   current fixed-price schema.
 - Market-price and source-format ambiguities are listed in ``SEED_REVIEW_NOTES``
   rather than given invented values.
-- Modifier-like offerings (pizza toppings, salad toppers, gluten-free upgrades,
-  sauces, etc.) are intentionally not flattened into ordinary menu items here;
-  they should be represented through GEO-20 modifier tables when seeded.
+- MENU_MODIFIER_DATA maps verified customizations to item-owned modifier tables.
+  Unmapped source offerings remain reference data, not ordinary menu items.
 """
 
 
@@ -1819,6 +1818,218 @@ MENU_DATA = [
             },
         ],
     },
+    {
+        "name": "Side Orders",
+        "display_order": 22,
+        "items": [
+            {
+                "name": "Jalapeno Poppers",
+                "display_order": 1,
+                "variants": [
+                    {"name": "Small", "price": "8.95", "display_order": 1},
+                    {"name": "Medium", "price": "15.10", "display_order": 2},
+                ],
+            },
+            {
+                "name": "Broccoli Bites",
+                "display_order": 2,
+                "variants": [
+                    {"name": "Small", "price": "8.45", "display_order": 1},
+                    {"name": "Medium", "price": "13.10", "display_order": 2},
+                ],
+            },
+            {
+                "name": "Mac & Cheese Bites",
+                "display_order": 3,
+                "variants": [
+                    {"name": "Small", "price": "8.45", "display_order": 1},
+                    {"name": "Medium", "price": "13.10", "display_order": 2},
+                ],
+            },
+            {
+                "name": "Toasted Ravioli",
+                "display_order": 4,
+                "variants": [
+                    {"name": "Small", "price": "8.45", "display_order": 1},
+                    {"name": "Medium", "price": "13.10", "display_order": 2},
+                ],
+            },
+            {
+                "name": "Rice Pilaf",
+                "display_order": 5,
+                "variants": [{"name": "Regular", "price": "5.95", "display_order": 1}],
+            },
+            {
+                "name": "Steak Fries",
+                "display_order": 6,
+                "variants": [
+                    {"name": "Small", "price": "5.05", "display_order": 1},
+                    {"name": "Medium", "price": "6.10", "display_order": 2},
+                    {"name": "Large", "price": "7.45", "display_order": 3},
+                ],
+            },
+            {
+                "name": "Shoestring Fries",
+                "display_order": 7,
+                "variants": [
+                    {"name": "Small", "price": "5.45", "display_order": 1},
+                    {"name": "Medium", "price": "7.10", "display_order": 2},
+                    {"name": "Large", "price": "8.35", "display_order": 3},
+                ],
+            },
+            {
+                "name": "Loaded Fries",
+                "display_order": 8,
+                "variants": [{"name": "Regular", "price": "8.95", "display_order": 1}],
+            },
+            {
+                "name": "Curly Fries",
+                "display_order": 9,
+                "variants": [
+                    {"name": "Small", "price": "6.95", "display_order": 1},
+                    {"name": "Medium", "price": "8.25", "display_order": 2},
+                    {"name": "Large", "price": "9.90", "display_order": 3},
+                ],
+            },
+            {
+                "name": "Homemade Onion Rings",
+                "display_order": 10,
+                "variants": [
+                    {"name": "Small", "price": "6.25", "display_order": 1},
+                    {"name": "Medium", "price": "7.95", "display_order": 2},
+                ],
+            },
+            {
+                "name": "Mozzarella Sticks",
+                "display_order": 11,
+                "variants": [
+                    {"name": "Small", "price": "7.25", "display_order": 1},
+                    {"name": "Medium", "price": "10.99", "display_order": 2},
+                ],
+            },
+            {
+                "name": "Chicken Fingers",
+                "display_order": 12,
+                "variants": [
+                    {"name": "Small", "price": "9.55", "display_order": 1},
+                    {"name": "Medium", "price": "14.50", "display_order": 2},
+                ],
+            },
+            {
+                "name": "House Fries",
+                "display_order": 13,
+                "variants": [{"name": "Regular", "price": "11.10", "display_order": 1}],
+                "description": "Crispy shoestring fries smothered with feta cheese and our "
+                "homemade Greek dressing.",
+            },
+            {
+                "name": "Bang Bang Cauliflower",
+                "display_order": 14,
+                "variants": [{"name": "Regular", "price": "9.20", "display_order": 1}],
+                "description": "Fresh cauliflower lightly battered and smothered in our "
+                "sweet Asian chili sauce. Served with ranch dressing.",
+            },
+            {
+                "name": "Bang Bang Shrimp",
+                "display_order": 15,
+                "variants": [{"name": "Regular", "price": "12.10", "display_order": 1}],
+                "description": "Fresh shrimp lightly battered and smothered in our sweet "
+                "Asian chili sauce. Served with ranch dressing.",
+            },
+            {
+                "name": "Tuscan Vegetables",
+                "display_order": 16,
+                "variants": [
+                    {"name": "Small", "price": "4.10", "display_order": 1},
+                    {"name": "Medium", "price": "6.55", "display_order": 2},
+                ],
+            },
+            {
+                "name": "Cheesy Sticks",
+                "display_order": 17,
+                "variants": [{"name": "Regular", "price": "7.25", "display_order": 1}],
+                "description": "Served with marinara.",
+            },
+            {
+                "name": "Garlic Cheesy Sticks",
+                "display_order": 18,
+                "variants": [{"name": "Regular", "price": "7.55", "display_order": 1}],
+                "description": "Served with marinara.",
+            },
+            {
+                "name": "Pizza Roll",
+                "display_order": 19,
+                "variants": [{"name": "Regular", "price": "4.50", "display_order": 1}],
+            },
+            {
+                "name": "Spinach Roll",
+                "display_order": 20,
+                "variants": [{"name": "Regular", "price": "4.50", "display_order": 1}],
+            },
+            {
+                "name": "Coleslaw",
+                "display_order": 21,
+                "variants": [{"name": "Regular", "price": "2.99", "display_order": 1}],
+            },
+            {
+                "name": "Tri-Color Pasta Salad",
+                "display_order": 22,
+                "variants": [{"name": "Regular", "price": "3.75", "display_order": 1}],
+            },
+            {
+                "name": "Red Bliss Potato Salad",
+                "display_order": 23,
+                "variants": [{"name": "Regular", "price": "3.75", "display_order": 1}],
+            },
+            {
+                "name": "Mash Potato",
+                "display_order": 24,
+                "variants": [{"name": "Regular", "price": "4.95", "display_order": 1}],
+            },
+            {
+                "name": "Loaded Mashed Potatoes",
+                "display_order": 25,
+                "variants": [{"name": "Regular", "price": "8.25", "display_order": 1}],
+                "description": "Crispy bacon covered with our homemade cheddar cheese "
+                "sauce.",
+            },
+            {
+                "name": "Cheese Fries",
+                "display_order": 26,
+                "variants": [
+                    {"name": "Small", "price": "6.35", "display_order": 1},
+                    {"name": "Medium", "price": "7.75", "display_order": 2},
+                    {"name": "Large", "price": "10.95", "display_order": 3},
+                ],
+                "description": "Crispy french fries smothered in our homemade cheddar "
+                "cheese sauce.",
+            },
+            {
+                "name": "Buffalo Cheese Fries",
+                "display_order": 27,
+                "variants": [{"name": "Regular", "price": "11.10", "display_order": 1}],
+                "description": "Crispy french fries tossed in our homemade buffalo sauce "
+                "and homemade cheddar cheese sauce.",
+            },
+            {
+                "name": "Hummus Sweet Potato",
+                "display_order": 28,
+                "variants": [
+                    {"name": "8 oz.", "price": "4.65", "display_order": 1},
+                    {"name": "15 oz.", "price": "8.95", "display_order": 2},
+                ],
+            },
+            {
+                "name": "Waffle Fries",
+                "display_order": 29,
+                "variants": [
+                    {"name": "Small", "price": "6.95", "display_order": 1},
+                    {"name": "Medium", "price": "8.05", "display_order": 2},
+                    {"name": "Large", "price": "9.85", "display_order": 3},
+                ],
+            },
+        ],
+    },
 ]
 
 
@@ -1839,23 +2050,18 @@ SEED_REVIEW_NOTES = [
         "reason": "Published page extraction associates Large $34.25 and X-Large $44.75 with this row in a way that appears structurally inconsistent with surrounding single-price items; verify before seeding.",
     },
     {
-        "entry": "Side Orders",
-        "reason": "The published section mixes one-, two-, and three-price rows under Small/Medium/Large headers, and text extraction does not reliably preserve blank columns. Verify size-to-price mappings before seeding this category.",
-    },
-    {
         "entry": "Soups (seasonal)",
         "reason": "The extracted row shows three prices ($4.65/$6.75/$12.65) but does not preserve all size headers reliably. Verify size labels before seeding.",
     },
     {
         "entry": "Pizza toppings / Salad toppers / sandwich add-ons / gluten-free upgrades / dipping sauces / dressing choices",
-        "reason": "These are modifier-style offerings and should be seeded into GEO-20 modifier tables rather than flattened into MENU_DATA items.",
+        "reason": "Verified item/category mappings are now seeded through MENU_MODIFIER_DATA. Dipping sauces remain normal Extras items; do not create generic sauce modifiers.",
     },
 ]
 
 
-# Modifier source data that can be translated into GEO-20 ModifierGroup /
-# ModifierOption records in a follow-up pass. Prices are included only where the
-# published page gives a clear single adjustment.
+# Source reference for modifier definitions below. Only offerings explicitly
+# mapped in MENU_MODIFIER_DATA are seeded; dipping sauces remain Extras items. Prices are explicit source adjustments.
 MODIFIER_SOURCE_DATA = {
     "pizza_toppings": [
         "Extra Cheese",
@@ -1936,3 +2142,238 @@ MODIFIER_SOURCE_DATA = {
         {"applies_to": "Hot Subs", "name": "Gluten Free Sub Roll", "price": "3.75"},
     ],
 }
+
+
+# Shared source definitions create separate, item-owned database records.
+PIZZA_TOPPING_OPTIONS = [
+    {"name": name, "display_order": order}
+    for order, name in enumerate(MODIFIER_SOURCE_DATA["pizza_toppings"], start=1)
+]
+
+
+def _choice_options(names):
+    return [
+        {"name": name, "display_order": order, "price_adjustment": "0.00"}
+        for order, name in enumerate(names, start=1)
+    ]
+
+
+MENU_MODIFIER_DATA = [
+    *[
+        {
+            "category_name": "Pizzas",
+            "item_name": "1 Topping" if count == 1 else f"{count} Toppings",
+            "name": "Choose Toppings",
+            "min_selections": count,
+            "max_selections": count,
+            "display_order": 1,
+            "options": [
+                {**option, "price_adjustment": "0.00"}
+                for option in PIZZA_TOPPING_OPTIONS
+            ],
+        }
+        for count in range(1, 5)
+    ],
+    {
+        "category_name": "Pasta Dishes",
+        "name": "Pasta Type",
+        "min_selections": 1,
+        "max_selections": 1,
+        "display_order": 1,
+        "options": _choice_options(["Spaghetti", "Ziti", "Cellentani"]),
+    },
+    {
+        "category_name": "Pasta Dishes",
+        "name": "Sauce",
+        "min_selections": 1,
+        "max_selections": 1,
+        "display_order": 2,
+        "options": _choice_options(["Homemade Marinara", "Homemade Alfredo"]),
+    },
+    {
+        "category_name": "Georgio's Club Sandwiches",
+        "name": "Bread Type",
+        "min_selections": 1,
+        "max_selections": 1,
+        "display_order": 1,
+        "options": _choice_options(["White", "Wheat", "Marble Rye"]),
+    },
+    *[
+        {
+            "category_name": "Hot Sandwiches",
+            "item_name": item_name,
+            "name": "Add-ons",
+            "min_selections": 0,
+            "max_selections": len(options),
+            "display_order": 2,
+            "options": [
+                {
+                    "name": option["name"].removeprefix("Add "),
+                    "display_order": order,
+                    "price_adjustment": option["price"],
+                }
+                for order, option in enumerate(options, start=1)
+            ],
+        }
+        for item_name, options in MODIFIER_SOURCE_DATA["hot_sandwich_add_ons"].items()
+    ],
+    {
+        "category_name": "Salads",
+        "name": "Add Toppings",
+        "min_selections": 0,
+        "max_selections": 17,
+        "display_order": 2,
+        "options": [
+            {
+                "name": option["name"],
+                "display_order": order,
+                "price_adjustment": option["price"],
+            }
+            for order, option in enumerate(
+                MODIFIER_SOURCE_DATA["salad_toppers"], start=1
+            )
+        ],
+    },
+    {
+        "category_name": "Hot Subs",
+        "name": "Bread Type",
+        "min_selections": 1,
+        "max_selections": 1,
+        "display_order": 1,
+        "options": [
+            {
+                "name": "Standard Sub Roll",
+                "display_order": 1,
+                "price_adjustment": "0.00",
+            },
+            {
+                "name": "Gluten Free Sub Roll",
+                "display_order": 2,
+                "price_adjustment": "3.75",
+            },
+        ],
+    },
+    {
+        "category_name": "Hot Sandwiches",
+        "name": "Bread Type",
+        "min_selections": 1,
+        "max_selections": 1,
+        "display_order": 1,
+        "options": [
+            {"name": "Standard Roll", "display_order": 1, "price_adjustment": "0.00"},
+            {
+                "name": "Gluten Free Roll",
+                "display_order": 2,
+                "price_adjustment": "2.50",
+            },
+        ],
+    },
+    {
+        "category_name": "Georgio's Famous Hot Roast Beef",
+        "name": "Bread Type",
+        "min_selections": 1,
+        "max_selections": 1,
+        "display_order": 1,
+        "options": [
+            {"name": "Standard Roll", "display_order": 1, "price_adjustment": "0.00"},
+            {
+                "name": "Gluten Free Roll",
+                "display_order": 2,
+                "price_adjustment": "2.50",
+            },
+        ],
+    },
+    {
+        "category_name": "Salads",
+        "name": "Dressing Type",
+        "min_selections": 1,
+        "max_selections": 1,
+        "display_order": 1,
+        "options": [
+            {"name": "House", "display_order": 1, "price_adjustment": "0.00"},
+            {"name": "Italian", "display_order": 2, "price_adjustment": "0.00"},
+            {"name": "Caesar", "display_order": 3, "price_adjustment": "0.00"},
+            {
+                "name": "Zinfandel Vinaigrette",
+                "display_order": 4,
+                "price_adjustment": "0.00",
+            },
+            {
+                "name": "Balsamic Vinaigrette",
+                "display_order": 5,
+                "price_adjustment": "0.00",
+            },
+            {"name": "Ranch", "display_order": 6, "price_adjustment": "0.00"},
+            {"name": "Honey Mustard", "display_order": 7, "price_adjustment": "0.00"},
+            {
+                "name": "Olive Oil & Vinegar",
+                "display_order": 8,
+                "price_adjustment": "0.00",
+            },
+            {"name": "Blue Cheese", "display_order": 9, "price_adjustment": "0.00"},
+        ],
+    },
+    {
+        "category_name": "Georgio's Club Sandwiches",
+        "name": "Side Choice",
+        "min_selections": 1,
+        "max_selections": 1,
+        "display_order": 2,
+        "options": [
+            {"name": "Fries", "display_order": 1, "price_adjustment": "0.00"},
+            {"name": "Coleslaw", "display_order": 2, "price_adjustment": "0.00"},
+            {"name": "Potato Salad", "display_order": 3, "price_adjustment": "0.00"},
+            {
+                "name": "Tri-Colored Pasta Salad",
+                "display_order": 4,
+                "price_adjustment": "0.00",
+            },
+        ],
+    },
+    {
+        "category_name": "Dinners",
+        "name": "Side Choice",
+        "min_selections": 1,
+        "max_selections": 1,
+        "display_order": 1,
+        "options": [
+            {"name": "French Fries", "display_order": 1, "price_adjustment": "0.00"},
+            {"name": "Rice", "display_order": 2, "price_adjustment": "0.00"},
+            {"name": "Onion Rings", "display_order": 3, "price_adjustment": "0.00"},
+            {"name": "Mashed Potatoes", "display_order": 4, "price_adjustment": "0.00"},
+            {
+                "name": "Tuscan Vegetables",
+                "display_order": 5,
+                "price_adjustment": "0.00",
+            },
+            {"name": "Curly Fries", "display_order": 6, "price_adjustment": "2.00"},
+            {
+                "name": "Sweet Potato Waffle Fries",
+                "display_order": 7,
+                "price_adjustment": "2.00",
+            },
+        ],
+    },
+    {
+        "category_name": "Side Orders",
+        "name": "Add-ons",
+        "min_selections": 0,
+        "max_selections": 1,
+        "display_order": 1,
+        "options": [
+            {"name": "Jalapenos", "display_order": 1, "price_adjustment": "0.95"}
+        ],
+        "item_name": "Cheese Fries",
+    },
+    {
+        "category_name": "Side Orders",
+        "name": "Add-ons",
+        "min_selections": 0,
+        "max_selections": 1,
+        "display_order": 1,
+        "options": [
+            {"name": "Jalapenos", "display_order": 1, "price_adjustment": "0.95"}
+        ],
+        "item_name": "Buffalo Cheese Fries",
+    },
+]

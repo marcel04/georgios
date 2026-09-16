@@ -19,7 +19,8 @@ if os.environ.get("GEO20_DB_TESTS") != "1":
 @pytest.fixture
 def menu_engine():
     """Create an isolated database with real foreign-key cascade enforcement."""
-    from app.models import MenuCategory, MenuItem, MenuItemVariant
+    from app import models  # noqa: F401 -- register all menu/modifier tables
+    from app.database import Base
 
     engine = create_engine(
         "sqlite://",
@@ -35,9 +36,8 @@ def menu_engine():
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
 
-    # API contract tests need the core menu tables, not PostgreSQL triggers.
-    for model in (MenuCategory, MenuItem, MenuItemVariant):
-        model.__table__.create(engine)
+    # Include modifier tables and composite keys; PostgreSQL triggers stay separate.
+    Base.metadata.create_all(engine)
 
     try:
         yield engine
