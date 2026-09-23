@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 # Opt-in PostgreSQL tests intentionally use the configured development database.
-if os.environ.get("GEO20_DB_TESTS") != "1":
+if not any(
+    os.environ.get(flag) == "1" for flag in ("GEO20_DB_TESTS", "GEO27_DB_TESTS")
+):
     # conftest loads before test modules import the app and validate settings.
     # setdefault preserves explicitly supplied environment values.
     os.environ.setdefault("FRONTEND_URL", "http://localhost:3000")
