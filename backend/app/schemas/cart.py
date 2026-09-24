@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, PlainSerializer
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 
 Money = Annotated[
     Decimal, PlainSerializer(lambda value: format(value, ".2f"), return_type=str)
@@ -46,3 +46,19 @@ class CartResponse(BaseModel):
     item_count: int
     subtotal: Money
     items: list[CartItemResponse]
+
+
+class CartGroupSelection(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    modifier_group_id: int
+    option_ids: list[int]
+
+
+class CartItemCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    menu_item_variant_id: int
+    quantity: Annotated[int, Field(strict=True, ge=1, le=20)]
+    special_instructions: Annotated[str, Field(max_length=250)] | None = None
+    modifier_groups: list[CartGroupSelection] = Field(default_factory=list)

@@ -8,7 +8,7 @@ from fastapi.routing import APIRoute
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas.cart import CartCreateRequest, CartResponse
+from app.schemas.cart import CartCreateRequest, CartItemCreateRequest, CartResponse
 from app.services import cart as service
 
 
@@ -65,3 +65,10 @@ def create_cart(
 @router.get("/{cart_id}", response_model=CartResponse)
 def get_cart(cart_id: UUID, db: Session = Depends(get_db)) -> CartResponse:
     return service.get_cart(db, cart_id)
+
+
+@router.post("/{cart_id}/items", response_model=CartResponse, status_code=201)
+def add_item(
+    cart_id: UUID, body: CartItemCreateRequest, db: Session = Depends(get_db)
+) -> CartResponse:
+    return service.add_item(db, cart_id, body)
