@@ -16,13 +16,13 @@ from app.services import cart as service
 
 
 @pytest.fixture(params=["sqlite", "postgresql"])
-def cart_api(request, menu_engine):
+def cart_api(request):
     if request.param == "postgresql":
         if os.environ.get("GEO27_DB_TESTS") != "1":
             pytest.skip("Requires GEO27_DB_TESTS=1")
         from app.database import engine
     else:
-        engine = menu_engine
+        engine = request.getfixturevalue("menu_engine")
         with engine.connect() as connection:
             connection.connection.driver_connection.create_function(
                 "gen_random_uuid", 0, lambda: uuid4().hex

@@ -275,7 +275,7 @@ def test_cart_errors(configured, monkeypatch, kind, status):
     )
 
 
-@pytest.mark.parametrize("operation", ["add", "remove"])
+@pytest.mark.parametrize("operation", ["add", "remove", "quantity"])
 def test_postgres_lock_checks_time_after_wait(monkeypatch, operation):
     """A real blocked writer samples time only after acquiring the cart lock."""
     import os
@@ -285,7 +285,7 @@ def test_postgres_lock_checks_time_after_wait(monkeypatch, operation):
     from sqlalchemy import delete, text
 
     from app.database import engine
-    from app.schemas.cart import CartItemCreateRequest
+    from app.schemas.cart import CartItemCreateRequest, CartItemQuantityRequest
 
     if os.environ.get("GEO27_DB_TESTS") != "1":
         pytest.skip("Requires PostgreSQL; SQLite cannot verify row locks")
@@ -310,6 +310,10 @@ def test_postgres_lock_checks_time_after_wait(monkeypatch, operation):
             pid.append(db.scalar(text("select pg_backend_pid()")))
             started.set()
             try:
+                if operation == "quantity":
+                    return service.update_quantity(
+                        db, cid, uuid4(), CartItemQuantityRequest(quantity=2)
+                    )
                 if operation == "remove":
                     return service.remove_item(db, cid, uuid4())
                 service.add_item(
@@ -444,4 +448,78 @@ def test_postgres_concurrent_mutations_preserve_both_lines(operation):
         with Session(engine) as db:
             db.execute(delete(Cart).where(Cart.id == cid))
             db.execute(delete(MenuCategory).where(MenuCategory.id == category_id))
+            db.commit()
+
+
+def test_postgres_unrelated_cart_is_not_blocked():
+    import os
+    from concurrent.futures import ThreadPoolExecutor
+
+    from sqlalchemy import delete
+
+    from app.database import engine
+
+    if os.environ.get("GEO27_DB_TESTS") != "1":
+        pytest.skip("Requires PostgreSQL row locks")
+    with Session(engine) as db:
+        carts = [
+            Cart(expires_at=service.server_now() + timedelta(minutes=10))
+            for _ in range(2)
+        ]
+        db.add_all(carts)
+        db.commit()
+        first, second = [cart.id for cart in carts]
+
+    def mutate_other():
+        with Session(engine) as db:
+            with service.cart_mutation(db, second) as (cart, now):
+                return service.mutation_response(db, cart, now)
+
+    try:
+        with Session(engine) as locker, ThreadPoolExecutor(max_workers=1) as pool:
+            locker.execute(select(Cart).where(Cart.id == first).with_for_update())
+            future = pool.submit(mutate_other)
+            try:
+                assert future.result(timeout=5).id == second
+            finally:
+                locker.rollback()
+    finally:
+        with Session(engine) as db:
+            db.execute(delete(Cart).where(Cart.id.in_([first, second])))
+            db.commit()
+
+
+def test_postgres_stale_expiration_read_preserves_committed_refresh():
+    import os
+
+    from sqlalchemy import delete
+
+    from app.database import engine
+
+    if os.environ.get("GEO27_DB_TESTS") != "1":
+        pytest.skip("Requires separate PostgreSQL transactions")
+    now = service.server_now()
+    deadline = now + timedelta(minutes=1)
+    with Session(engine) as db:
+        cart = Cart(expires_at=deadline)
+        db.add(cart)
+        db.commit()
+        cid = cart.id
+    try:
+        with Session(engine) as reader:
+            stale = service.load_cart(reader, cid)
+            with Session(engine) as writer:
+                with service.cart_mutation(writer, cid) as (cart, mutation_time):
+                    refreshed = service.mutation_response(writer, cart, mutation_time)
+            # Reader decides using its older deadline after the mutation committed.
+            service.check_expiration(reader, stale, deadline)
+            assert stale.status.value == "ACTIVE"
+            assert stale.expires_at == refreshed.expires_at
+        with Session(engine) as db:
+            row = db.get(Cart, cid)
+            assert row.status.value == "ACTIVE"
+            assert row.expires_at == refreshed.expires_at
+    finally:
+        with Session(engine) as db:
+            db.execute(delete(Cart).where(Cart.id == cid))
             db.commit()
