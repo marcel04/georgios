@@ -4,7 +4,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import delete, select, update
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, raiseload
 
 from app.models.cart import Cart, CartItem, CartItemModifierOption, CartStatus
 from app.models.menu import MenuItem, MenuItemVariant, ModifierGroup, ModifierOption
@@ -52,23 +52,19 @@ class CartError(Exception):
 
 
 def create_cart(db: Session) -> CartResponse:
-    cart = Cart(expires_at=server_now() + timedelta(minutes=10))
+    cart = Cart(expires_at=server_now() + timedelta(minutes=10), items=[])
     db.add(cart)
     db.flush()  # Let the existing database defaults assign UUID and status.
-    response = CartResponse(
-        id=cart.id,
-        status="ACTIVE",
-        expires_at=as_utc(cart.expires_at),
-        item_count=0,
-        subtotal=Decimal("0.00"),
-        items=[],
-    )
+    response = render_cart(cart)
     db.commit()
     return response
 
 
 def load_cart(db: Session, cart_id: UUID) -> Cart:
-    # One statement gives validation and pricing a consistent menu snapshot.
+    # A single SELECT gives final validation/totals one PostgreSQL statement snapshot.
+    # Refresh identity-map values loaded during mutation validation as well.
+    # Joined collections can multiply rows; do not split into separate SELECTs
+    # without preserving the consistent menu view. Raise on accidental lazy loads.
     variant = joinedload(Cart.items).joinedload(CartItem.menu_item_variant)
     option = (
         joinedload(Cart.items)
@@ -81,6 +77,7 @@ def load_cart(db: Session, cart_id: UUID) -> Cart:
             .where(Cart.id == cart_id)
             .execution_options(populate_existing=True)
             .options(
+                raiseload("*"),
                 variant.joinedload(MenuItemVariant.menu_item).joinedload(
                     MenuItem.category
                 ),
