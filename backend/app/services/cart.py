@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.cart import Cart, CartItem, CartItemModifierOption, CartStatus
@@ -373,5 +373,20 @@ def update_quantity(
         if line is None:
             raise CartError(404, "cart_item_not_found", "Cart item not found.")
         line.quantity = request.quantity
+        response = mutation_response(db, cart, now)
+    return response
+
+
+def remove_item(db: Session, cart_id: UUID, cart_item_id: UUID) -> CartResponse:
+    with cart_mutation(db, cart_id) as (cart, now):
+        # A scoped SQL DELETE delegates selection cleanup to the database cascade.
+        # Validate only the resulting cart, so deleting a stale line can repair it.
+        deleted = db.execute(
+            delete(CartItem).where(
+                CartItem.cart_id == cart_id, CartItem.id == cart_item_id
+            )
+        )
+        if not deleted.rowcount:
+            raise CartError(404, "cart_item_not_found", "Cart item not found.")
         response = mutation_response(db, cart, now)
     return response

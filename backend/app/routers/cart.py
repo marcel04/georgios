@@ -87,3 +87,10 @@ def update_quantity(
     db: Session = Depends(get_db),
 ) -> CartResponse:
     return service.update_quantity(db, cart_id, cart_item_id, body)
+
+
+@router.delete("/{cart_id}/items/{cart_item_id}", response_model=CartResponse)
+def remove_item(
+    cart_id: UUID, cart_item_id: UUID, db: Session = Depends(get_db)
+) -> CartResponse:
+    return service.remove_item(db, cart_id, cart_item_id)
