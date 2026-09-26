@@ -275,7 +275,8 @@ def test_cart_errors(configured, monkeypatch, kind, status):
     )
 
 
-def test_postgres_lock_checks_time_after_wait(monkeypatch):
+@pytest.mark.parametrize("operation", ["add", "remove"])
+def test_postgres_lock_checks_time_after_wait(monkeypatch, operation):
     """A real blocked writer samples time only after acquiring the cart lock."""
     import os
     from concurrent.futures import ThreadPoolExecutor
@@ -309,6 +310,8 @@ def test_postgres_lock_checks_time_after_wait(monkeypatch):
             pid.append(db.scalar(text("select pg_backend_pid()")))
             started.set()
             try:
+                if operation == "remove":
+                    return service.remove_item(db, cid, uuid4())
                 service.add_item(
                     db,
                     cid,
@@ -355,7 +358,7 @@ def test_postgres_lock_checks_time_after_wait(monkeypatch):
             db.commit()
 
 
-@pytest.mark.parametrize("operation", ["add", "quantity"])
+@pytest.mark.parametrize("operation", ["add", "quantity", "remove_update"])
 def test_postgres_concurrent_mutations_preserve_both_lines(operation):
     import os
     from concurrent.futures import ThreadPoolExecutor
@@ -386,7 +389,7 @@ def test_postgres_concurrent_mutations_preserve_both_lines(operation):
         )
         cart = Cart(expires_at=service.server_now() + timedelta(minutes=5))
         db.add_all([variant, cart])
-        if operation == "quantity":
+        if operation != "add":
             cart.items = [
                 CartItem(menu_item_variant=variant, quantity=1) for _ in range(2)
             ]
@@ -398,7 +401,9 @@ def test_postgres_concurrent_mutations_preserve_both_lines(operation):
     def writer(index):
         with Session(engine) as db:
             barrier.wait(timeout=5)
-            if operation == "quantity":
+            if operation == "remove_update" and index == 0:
+                return service.remove_item(db, cid, line_ids[index])
+            if operation != "add":
                 return service.update_quantity(
                     db,
                     cid,
@@ -416,16 +421,25 @@ def test_postgres_concurrent_mutations_preserve_both_lines(operation):
             futures = [pool.submit(writer, index) for index in range(2)]
             results = [future.result(timeout=10) for future in futures]
         counts = sorted(result.item_count for result in results)
-        assert counts == [1, 2] if operation == "add" else counts in ([4, 7], [5, 7])
+        if operation == "add":
+            assert counts == [1, 2]
+        elif operation == "quantity":
+            assert counts in ([4, 7], [5, 7])
+        else:
+            assert counts in ([1, 4], [4, 5])
         with Session(engine) as db:
             cart = db.get(Cart, cid)
-            assert len(cart.items) == 2
-            assert len({line.id for line in cart.items}) == 2
-            assert service.get_cart(db, cid).subtotal == Decimal(
-                "20.00" if operation == "add" else "70.00"
-            )
+            expected = 1 if operation == "remove_update" else 2
+            assert len(cart.items) == expected
+            assert len({line.id for line in cart.items}) == expected
+            total = {"add": "20.00", "quantity": "70.00", "remove_update": "40.00"}[
+                operation
+            ]
+            assert service.get_cart(db, cid).subtotal == Decimal(total)
             if operation == "quantity":
                 assert sorted(line.quantity for line in cart.items) == [3, 4]
+            elif operation == "remove_update":
+                assert cart.items[0].quantity == 4
     finally:
         with Session(engine) as db:
             db.execute(delete(Cart).where(Cart.id == cid))
