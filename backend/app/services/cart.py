@@ -146,7 +146,12 @@ def render_cart(cart: Cart) -> CartResponse:
             or not item.is_available
             or not item.category.is_active
         ):
-            conflict("menu_item_variant_id", "item_unavailable")
+            conflict(
+                "menu_item_variant_id",
+                "item_unavailable",
+                menu_item_variant_id=variant.id,
+                menu_item_id=item.id,
+            )
         selections = {}
         for selection in line.modifier_options:
             option = selection.modifier_option
@@ -159,7 +164,12 @@ def render_cart(cart: Cart) -> CartResponse:
                 and not group.min_selections <= count <= group.max_selections
             ):
                 conflict(
-                    "modifier_groups", "selection_bounds", modifier_group_id=group.id
+                    "modifier_groups",
+                    "selection_bounds",
+                    modifier_group_id=group.id,
+                    selection_count=count,
+                    min_selections=group.min_selections,
+                    max_selections=group.max_selections,
                 )
         groups = []
         unit_price = variant.price
