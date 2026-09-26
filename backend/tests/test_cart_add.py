@@ -355,7 +355,8 @@ def test_postgres_lock_checks_time_after_wait(monkeypatch):
             db.commit()
 
 
-def test_postgres_concurrent_adds_preserve_both_lines():
+@pytest.mark.parametrize("operation", ["add", "quantity"])
+def test_postgres_concurrent_mutations_preserve_both_lines(operation):
     import os
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier
@@ -363,7 +364,7 @@ def test_postgres_concurrent_adds_preserve_both_lines():
     from sqlalchemy import delete
 
     from app.database import engine
-    from app.schemas.cart import CartItemCreateRequest
+    from app.schemas.cart import CartItemCreateRequest, CartItemQuantityRequest
 
     if os.environ.get("GEO27_DB_TESTS") != "1":
         pytest.skip("Requires PostgreSQL; SQLite cannot verify row locks")
@@ -385,13 +386,25 @@ def test_postgres_concurrent_adds_preserve_both_lines():
         )
         cart = Cart(expires_at=service.server_now() + timedelta(minutes=5))
         db.add_all([variant, cart])
+        if operation == "quantity":
+            cart.items = [
+                CartItem(menu_item_variant=variant, quantity=1) for _ in range(2)
+            ]
         db.commit()
+        line_ids = [line.id for line in cart.items]
         cid, category_id, variant_id = cart.id, category.id, variant.id
     barrier = Barrier(2)
 
-    def writer():
+    def writer(index):
         with Session(engine) as db:
             barrier.wait(timeout=5)
+            if operation == "quantity":
+                return service.update_quantity(
+                    db,
+                    cid,
+                    line_ids[index],
+                    CartItemQuantityRequest(quantity=index + 3),
+                )
             return service.add_item(
                 db,
                 cid,
@@ -400,14 +413,19 @@ def test_postgres_concurrent_adds_preserve_both_lines():
 
     try:
         with ThreadPoolExecutor(max_workers=2) as pool:
-            futures = [pool.submit(writer) for _ in range(2)]
+            futures = [pool.submit(writer, index) for index in range(2)]
             results = [future.result(timeout=10) for future in futures]
-        assert sorted(result.item_count for result in results) == [1, 2]
+        counts = sorted(result.item_count for result in results)
+        assert counts == [1, 2] if operation == "add" else counts in ([4, 7], [5, 7])
         with Session(engine) as db:
             cart = db.get(Cart, cid)
             assert len(cart.items) == 2
             assert len({line.id for line in cart.items}) == 2
-            assert service.get_cart(db, cid).subtotal == Decimal("20.00")
+            assert service.get_cart(db, cid).subtotal == Decimal(
+                "20.00" if operation == "add" else "70.00"
+            )
+            if operation == "quantity":
+                assert sorted(line.quantity for line in cart.items) == [3, 4]
     finally:
         with Session(engine) as db:
             db.execute(delete(Cart).where(Cart.id == cid))

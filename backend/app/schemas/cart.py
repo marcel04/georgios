@@ -62,3 +62,9 @@ class CartItemCreateRequest(BaseModel):
     quantity: Annotated[int, Field(strict=True, ge=1, le=20)]
     special_instructions: Annotated[str, Field(max_length=250)] | None = None
     modifier_groups: list[CartGroupSelection] = Field(default_factory=list)
+
+
+class CartItemQuantityRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    quantity: Annotated[int, Field(strict=True, ge=1, le=20)]

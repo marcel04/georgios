@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
@@ -10,6 +11,7 @@ from app.models.menu import MenuItem, MenuItemVariant, ModifierGroup, ModifierOp
 from app.schemas.cart import (
     CartGroupResponse,
     CartItemCreateRequest,
+    CartItemQuantityRequest,
     CartItemResponse,
     CartOptionResponse,
     CartResponse,
@@ -310,11 +312,10 @@ def validate_configuration(db: Session, request: CartItemCreateRequest) -> None:
         )
 
 
-def add_item(
-    db: Session, cart_id: UUID, request: CartItemCreateRequest
-) -> CartResponse:
+@contextmanager
+def cart_mutation(db: Session, cart_id: UUID):
+    """Own the transaction and share the parent lock across all cart mutations."""
     try:
-        # Lock only the parent cart, before sampling time or loading its menu graph.
         cart = db.scalars(
             select(Cart).where(Cart.id == cart_id).with_for_update()
         ).one_or_none()
@@ -322,6 +323,26 @@ def add_item(
         if cart is None:
             raise CartError(404, "cart_not_found", "Cart not found.")
         check_expiration(db, cart, now)
+        yield cart, now
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def mutation_response(db: Session, cart: Cart, now: datetime) -> CartResponse:
+    db.flush()
+    # Validate the entire resulting cart before accepting or refreshing the deadline.
+    response = render_cart(load_cart(db, cart.id))
+    cart.expires_at = now + timedelta(minutes=10)
+    response.expires_at = cart.expires_at
+    return response
+
+
+def add_item(
+    db: Session, cart_id: UUID, request: CartItemCreateRequest
+) -> CartResponse:
+    with cart_mutation(db, cart_id) as (cart, now):
         validate_configuration(db, request)
         line = CartItem(
             cart_id=cart_id,
@@ -336,13 +357,21 @@ def add_item(
             for oid in group.option_ids
         ]
         db.add(line)
-        db.flush()
-        # Reload and reuse the read renderer: stale existing lines reject the entire add.
-        response = render_cart(load_cart(db, cart_id))
-        cart.expires_at = now + timedelta(minutes=10)
-        response.expires_at = cart.expires_at
-        db.commit()
-        return response
-    except Exception:
-        db.rollback()
-        raise
+        response = mutation_response(db, cart, now)
+    return response
+
+
+def update_quantity(
+    db: Session, cart_id: UUID, cart_item_id: UUID, request: CartItemQuantityRequest
+) -> CartResponse:
+    with cart_mutation(db, cart_id) as (cart, now):
+        line = db.scalars(
+            select(CartItem).where(
+                CartItem.cart_id == cart_id, CartItem.id == cart_item_id
+            )
+        ).one_or_none()
+        if line is None:
+            raise CartError(404, "cart_item_not_found", "Cart item not found.")
+        line.quantity = request.quantity
+        response = mutation_response(db, cart, now)
+    return response
